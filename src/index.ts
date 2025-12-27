@@ -62,7 +62,7 @@ async function main() {
       console.log('   (none)');
     } else {
       for (const collateral of obligationInfo.collaterals) {
-        console.log(`   • ${collateral.coinName}: ${collateral.amount} (~$${collateral.valueUsd.toFixed(2)})`);
+        console.log(`   • ${collateral.coinName}: ${collateral.amountCoin.toFixed(4)} (~$${collateral.valueUsd.toFixed(2)})`);
       }
     }
 
@@ -72,7 +72,7 @@ async function main() {
       console.log('   (none)');
     } else {
       for (const debt of obligationInfo.debts) {
-        console.log(`   • ${debt.coinName}: ${debt.amount} (~$${debt.valueUsd.toFixed(2)})`);
+        console.log(`   • ${debt.coinName}: ${debt.amountCoin.toFixed(4)} (~$${debt.valueUsd.toFixed(2)})`);
       }
     }
 
@@ -123,7 +123,8 @@ async function main() {
         console.log('\n🚀 Executing liquidation...');
 
         // Calculate repay amount (50% of debt for safety)
-        const repayAmountRaw = BigInt(Math.floor(parseFloat(primaryDebt.amount) * 0.5));
+        // Use raw amount (with decimals) for transaction
+        const repayAmountRaw = BigInt(Math.floor(primaryDebt.amount * 0.5));
 
         const result = await liquidator.liquidate(
           obligationId,

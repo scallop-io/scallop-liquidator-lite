@@ -25,53 +25,51 @@ export class ScallopLiquidator {
       throw new Error(`Obligation not found: ${obligationId}`);
     }
 
-    // Extract debts
+    // Extract debts from SDK response
+    // SDK ObligationDebt: { coinName, coinType, borrowedAmount, borrowedCoin, borrowedValue, ... }
     const debts: DebtInfo[] = [];
     if (obligationAccount.debts) {
       for (const [coinName, debt] of Object.entries(obligationAccount.debts)) {
-        debts.push({
-          coinType: (debt as any).coinType || coinName,
-          coinName: coinName,
-          amount: String((debt as any).amount || 0),
-          valueUsd: (debt as any).valueUsd || 0,
-        });
+        if (debt) {
+          debts.push({
+            coinType: debt.coinType,
+            coinName: debt.coinName,
+            amount: debt.borrowedAmount,      // Raw amount (with decimals)
+            amountCoin: debt.borrowedCoin,    // Human-readable amount
+            valueUsd: debt.borrowedValue,
+          });
+        }
       }
     }
 
-    // Extract collaterals
+    // Extract collaterals from SDK response
+    // SDK ObligationCollateral: { coinName, coinType, depositedAmount, depositedCoin, depositedValue, ... }
     const collaterals: CollateralInfo[] = [];
     if (obligationAccount.collaterals) {
       for (const [coinName, collateral] of Object.entries(obligationAccount.collaterals)) {
-        collaterals.push({
-          coinType: (collateral as any).coinType || coinName,
-          coinName: coinName,
-          amount: String((collateral as any).amount || 0),
-          valueUsd: (collateral as any).valueUsd || 0,
-        });
+        if (collateral) {
+          collaterals.push({
+            coinType: collateral.coinType,
+            coinName: collateral.coinName,
+            amount: collateral.depositedAmount,   // Raw amount (with decimals)
+            amountCoin: collateral.depositedCoin, // Human-readable amount
+            valueUsd: collateral.depositedValue,
+          });
+        }
       }
     }
 
-    // Calculate risk level (collateral ratio)
+    // Use SDK's totalRiskLevel directly
     // Risk Level >= 1.0 (100%) means liquidatable
-    const totalDebtUsd = debts.reduce((sum, d) => sum + d.valueUsd, 0);
-    const totalCollateralUsd = collaterals.reduce((sum, c) => sum + c.valueUsd, 0);
-
-    // Use weighted borrow limit from SDK if available, otherwise estimate
-    let riskLevel = 0;
-    if ((obligationAccount as any).riskLevel !== undefined) {
-      riskLevel = (obligationAccount as any).riskLevel;
-    } else if (totalCollateralUsd > 0) {
-      // Rough estimate: assuming 75% average collateral factor
-      const borrowLimit = totalCollateralUsd * 0.75;
-      riskLevel = borrowLimit > 0 ? totalDebtUsd / borrowLimit : 0;
-    }
+    const riskLevel = obligationAccount.totalRiskLevel;
 
     return {
-      obligationId,
-      owner: (obligationAccount as any).owner || '',
+      obligationId: obligationAccount.obligationId,
       debts,
       collaterals,
       riskLevel,
+      totalBorrowedValueWithWeight: obligationAccount.totalBorrowedValueWithWeight,
+      totalRequiredCollateralValue: obligationAccount.totalRequiredCollateralValue,
       isLiquidatable: riskLevel >= 1.0,
     };
   }
@@ -106,7 +104,7 @@ export class ScallopLiquidator {
       );
 
       // Step 3: Call liquidate function using SDK's built-in method
-      // The SDK has liquidate in CoreNormalMethods
+      // Signature: liquidate(obligation, coin, debtCoinName, collateralCoinName)
       const [remainingDebt, liquidatedCollateral] = tx.liquidate(
         obligationId,
         repayCoin,
@@ -145,8 +143,12 @@ export class ScallopLiquidator {
     collateralCoinName: string,
     liquidationBonus: number = 0.05 // 5% default bonus
   ): Promise<{ profitable: boolean; estimatedProfitUsd: number }> {
-    const debt = obligationInfo.debts.find(d => d.coinName.toLowerCase() === debtCoinName.toLowerCase());
-    const collateral = obligationInfo.collaterals.find(c => c.coinName.toLowerCase() === collateralCoinName.toLowerCase());
+    const debt = obligationInfo.debts.find(
+      d => d.coinName.toLowerCase() === debtCoinName.toLowerCase()
+    );
+    const collateral = obligationInfo.collaterals.find(
+      c => c.coinName.toLowerCase() === collateralCoinName.toLowerCase()
+    );
 
     if (!debt || !collateral) {
       return { profitable: false, estimatedProfitUsd: 0 };
@@ -154,7 +156,8 @@ export class ScallopLiquidator {
 
     // Estimated profit = collateral received * bonus - gas costs
     // This is a simplified calculation
-    const maxLiquidatableUsd = Math.min(debt.valueUsd * 0.5, collateral.valueUsd); // Usually max 50% can be liquidated
+    // Usually max 50% of debt can be liquidated at once
+    const maxLiquidatableUsd = Math.min(debt.valueUsd * 0.5, collateral.valueUsd);
     const estimatedProfitUsd = maxLiquidatableUsd * liquidationBonus;
 
     return {
