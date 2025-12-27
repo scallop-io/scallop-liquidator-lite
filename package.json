@@ -1,0 +1,23 @@
+{
+  "name": "scallop-liquidator-lite",
+  "version": "1.0.0",
+  "description": "Scallop Sui Lending Protocol Liquidation Bot - Lite Version",
+  "type": "module",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "tsx src/index.ts",
+    "sliq": "tsx src/index.ts"
+  },
+  "keywords": ["sui", "scallop", "liquidation", "defi"],
+  "license": "MIT",
+  "dependencies": {
+    "@scallop-io/sui-scallop-sdk": "^2.3.9",
+    "dotenv": "^16.4.5"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "typescript": "^5.7.2",
+    "tsx": "^4.19.2"
+  }
+}
