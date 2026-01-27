@@ -185,13 +185,23 @@ export class ScallopLiquidator {
    * Query obligation directly from chain (fallback for bad debt)
    */
   private async queryObligationFromChain(obligationId: string): Promise<ObligationInfo> {
-    const client = await this.getSuiClient();
+    let client;
+    try {
+      client = await this.getSuiClient();
+    } catch (error) {
+      throw new Error(`Failed to get Sui client: ${error instanceof Error ? error.message : String(error)}`);
+    }
 
     // Get obligation object
-    const objResponse = await client.getObject({
-      id: obligationId,
-      options: { showContent: true }
-    });
+    let objResponse;
+    try {
+      objResponse = await client.getObject({
+        id: obligationId,
+        options: { showContent: true }
+      });
+    } catch (error) {
+      throw new Error(`Failed to query obligation from chain: ${error instanceof Error ? error.message : String(error)}`);
+    }
 
     if (!objResponse.data?.content || objResponse.data.content.dataType !== 'moveObject') {
       throw new Error(`Obligation not found: ${obligationId}`);
@@ -408,9 +418,45 @@ export class ScallopLiquidator {
         repaidAmount: repayAmount.toString(),
       };
     } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+
+      // Check for obligation locked error (770)
+      if (errorMsg.includes('770')) {
+        return {
+          success: false,
+          error: `Obligation is locked (Error 770). The obligation owner has staked this in the borrow incentive program. It cannot be liquidated until the owner unstakes it.`,
+        };
+      }
+
+      // Check for zero amount error (1537)
+      if (errorMsg.includes('1537')) {
+        return {
+          success: false,
+          error: `Liquidation amount must be greater than zero (Error 1537). The debt may be too small to liquidate.`,
+        };
+      }
+
+      // Check for insufficient balance
+      if (errorMsg.includes('No valid coins') || errorMsg.includes('Insufficient')) {
+        const decimals = COIN_DECIMALS[debtCoinName.toLowerCase()] || 9;
+        const humanAmount = Number(repayAmount) / Math.pow(10, decimals);
+        return {
+          success: false,
+          error: `Insufficient ${debtCoinName.toUpperCase()} balance. Required: ${humanAmount.toFixed(6)} ${debtCoinName.toUpperCase()}. Please ensure you have enough ${debtCoinName.toUpperCase()} in your wallet.`,
+        };
+      }
+
+      // Check for unsupported coin pool
+      if (errorMsg.includes('Cannot convert undefined') || errorMsg.includes('Cannot convert null')) {
+        return {
+          success: false,
+          error: `Coin "${debtCoinName}" or "${collateralCoinName}" is not supported by Scallop SDK. Common supported coins: usdc, wusdc, wusdt, sui, weth, cetus, sca.`,
+        };
+      }
+
       return {
         success: false,
-        error: error instanceof Error ? error.message : String(error),
+        error: errorMsg,
       };
     }
   }
@@ -469,6 +515,14 @@ export class ScallopLiquidator {
         return {
           success: false,
           error: `Insufficient ${debtCoinName.toUpperCase()} balance. Required: ${humanAmount.toFixed(6)} ${debtCoinName.toUpperCase()}. Please ensure you have enough ${debtCoinName.toUpperCase()} in your wallet.`,
+        };
+      }
+
+      // Check for obligation locked error (770)
+      if (errorMsg.includes('770')) {
+        return {
+          success: false,
+          error: `Obligation is locked (Error 770). The obligation owner has staked this in the borrow incentive program. It cannot be repaid until the owner unstakes it.`,
         };
       }
 
