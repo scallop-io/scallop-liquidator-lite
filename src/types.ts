@@ -13,18 +13,22 @@ export interface ObligationInfo {
 }
 
 export interface DebtInfo {
-  coinType: string;
-  coinName: string;
-  amount: number;      // Raw amount (with decimals, e.g., 1000000 for 1 USDC)
-  amountCoin: number;  // Human-readable amount (e.g., 1.0 for 1 USDC)
+  coinType: string;       // Full coin type (e.g., "0x5d4b...::coin::COIN")
+  coinName: string;       // SDK-compatible name (e.g., "usdc")
+  coinSymbol: string;     // Display symbol (e.g., "wUSDC")
+  coinDisplayName: string; // Full display name (e.g., "Wormhole USDC")
+  amount: number;         // Raw amount (with decimals, e.g., 1000000 for 1 USDC)
+  amountCoin: number;     // Human-readable amount (e.g., 1.0 for 1 USDC)
   valueUsd: number;
 }
 
 export interface CollateralInfo {
-  coinType: string;
-  coinName: string;
-  amount: number;      // Raw amount (with decimals)
-  amountCoin: number;  // Human-readable amount
+  coinType: string;       // Full coin type
+  coinName: string;       // SDK-compatible name
+  coinSymbol: string;     // Display symbol
+  coinDisplayName: string; // Full display name
+  amount: number;         // Raw amount (with decimals)
+  amountCoin: number;     // Human-readable amount
   valueUsd: number;
 }
 

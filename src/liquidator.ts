@@ -8,14 +8,57 @@ import type { ObligationInfo, LiquidationResult, DebtInfo, CollateralInfo } from
 // Known coin decimals for common assets
 const COIN_DECIMALS: Record<string, number> = {
   'usdc': 6,
+  'wusdc': 6,
   'usdt': 6,
+  'wusdt': 6,
   'sui': 9,
   'weth': 8,
+  'eth': 8,
   'wbtc': 8,
   'cetus': 9,
   'apt': 8,
   'sol': 8,
+  'wsol': 8,
   'sca': 9,
+};
+
+// Known coin type addresses to human-readable names
+const KNOWN_COIN_TYPES: Record<string, { name: string; symbol: string }> = {
+  // Native USDC
+  'dba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC': {
+    name: 'USD Coin',
+    symbol: 'USDC',
+  },
+  // Wormhole USDC
+  '5d4b302506645c37ff133b98c4b50a5ae14841659738d6d733d59d0d217a93bf::coin::COIN': {
+    name: 'Wormhole USDC',
+    symbol: 'wUSDC',
+  },
+  // Wormhole USDT
+  'c060006111016b8a020ad5b33834984a437aaa7d3c74c18e09a95d48aceab08c::coin::COIN': {
+    name: 'Wormhole USDT',
+    symbol: 'wUSDT',
+  },
+  // Wormhole ETH
+  'af8cd5edc19c4512f4259f0bee101a40d41ebed738ade5874359610ef8eeced5::coin::COIN': {
+    name: 'Wormhole ETH',
+    symbol: 'wETH',
+  },
+  // Native SUI
+  '0000000000000000000000000000000000000000000000000000000000000002::sui::SUI': {
+    name: 'Sui',
+    symbol: 'SUI',
+  },
+  // CETUS
+  '06864a6f921804860930db6ddbe2e16acdf8504495ea7481637a1c8b9a8fe54b::cetus::CETUS': {
+    name: 'Cetus',
+    symbol: 'CETUS',
+  },
+  // SCA
+  '7016aae72cfc67f2fadf55769c0a7dd54291a583b63051a5ed71081cce836ac6::sca::SCA': {
+    name: 'Scallop',
+    symbol: 'SCA',
+  },
 };
 
 export class ScallopLiquidator {
@@ -78,9 +121,13 @@ export class ScallopLiquidator {
     if (obligationAccount.debts) {
       for (const [, debt] of Object.entries(obligationAccount.debts)) {
         if (debt) {
+          // SDK provides coinName directly (e.g., "usdc", "sui")
+          const symbol = debt.coinName.toUpperCase();
           debts.push({
             coinType: debt.coinType,
             coinName: debt.coinName,
+            coinSymbol: symbol,
+            coinDisplayName: symbol,
             amount: debt.borrowedAmount,
             amountCoin: debt.borrowedCoin,
             valueUsd: debt.borrowedValue,
@@ -94,9 +141,12 @@ export class ScallopLiquidator {
     if (obligationAccount.collaterals) {
       for (const [, collateral] of Object.entries(obligationAccount.collaterals)) {
         if (collateral) {
+          const symbol = collateral.coinName.toUpperCase();
           collaterals.push({
             coinType: collateral.coinType,
             coinName: collateral.coinName,
+            coinSymbol: symbol,
+            coinDisplayName: symbol,
             amount: collateral.depositedAmount,
             amountCoin: collateral.depositedCoin,
             valueUsd: collateral.depositedValue,
@@ -165,13 +215,15 @@ export class ScallopLiquidator {
           };
 
           const coinTypeFull = debtContent.name.fields.name;
-          const coinName = this.extractCoinName(coinTypeFull);
+          const coinInfo = this.extractCoinInfo(coinTypeFull);
           const rawAmount = Number(debtContent.value.fields.amount);
-          const decimals = COIN_DECIMALS[coinName.toLowerCase()] || 9;
+          const decimals = COIN_DECIMALS[coinInfo.sdkName.toLowerCase()] || COIN_DECIMALS[coinInfo.symbol.toLowerCase()] || 6;
 
           debts.push({
             coinType: '0x' + coinTypeFull,
-            coinName,
+            coinName: coinInfo.sdkName,
+            coinSymbol: coinInfo.symbol,
+            coinDisplayName: coinInfo.name,
             amount: rawAmount,
             amountCoin: rawAmount / Math.pow(10, decimals),
             valueUsd: 0, // Can't determine USD value without price oracle
@@ -208,13 +260,15 @@ export class ScallopLiquidator {
           };
 
           const coinTypeFull = collContent.name.fields.name;
-          const coinName = this.extractCoinName(coinTypeFull);
+          const coinInfo = this.extractCoinInfo(coinTypeFull);
           const rawAmount = Number(collContent.value.fields.amount);
-          const decimals = COIN_DECIMALS[coinName.toLowerCase()] || 9;
+          const decimals = COIN_DECIMALS[coinInfo.sdkName.toLowerCase()] || COIN_DECIMALS[coinInfo.symbol.toLowerCase()] || 9;
 
           collaterals.push({
             coinType: '0x' + coinTypeFull,
-            coinName,
+            coinName: coinInfo.sdkName,
+            coinSymbol: coinInfo.symbol,
+            coinDisplayName: coinInfo.name,
             amount: rawAmount,
             amountCoin: rawAmount / Math.pow(10, decimals),
             valueUsd: 0,
@@ -240,15 +294,52 @@ export class ScallopLiquidator {
   }
 
   /**
-   * Extract coin name from full type path
-   * e.g., "dba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC" -> "usdc"
+   * Extract coin info from full type path
+   * Returns { name: display name, symbol: ticker, sdkName: name for SDK calls }
+   */
+  private extractCoinInfo(coinTypeFull: string): { name: string; symbol: string; sdkName: string } {
+    // Check if it's a known coin type
+    if (KNOWN_COIN_TYPES[coinTypeFull]) {
+      const known = KNOWN_COIN_TYPES[coinTypeFull];
+      return {
+        name: known.name,
+        symbol: known.symbol,
+        sdkName: known.symbol.toLowerCase().replace('w', ''), // wUSDC -> usdc for SDK
+      };
+    }
+
+    // Fallback: extract from type path
+    const parts = coinTypeFull.split('::');
+    if (parts.length >= 3) {
+      const moduleName = parts[1];
+      const structName = parts[2];
+      // If module name is generic like "coin", use struct name
+      if (moduleName.toLowerCase() === 'coin') {
+        return {
+          name: `Unknown (${structName})`,
+          symbol: structName,
+          sdkName: structName.toLowerCase(),
+        };
+      }
+      return {
+        name: structName,
+        symbol: structName,
+        sdkName: moduleName.toLowerCase(),
+      };
+    }
+
+    return {
+      name: coinTypeFull,
+      symbol: coinTypeFull,
+      sdkName: coinTypeFull,
+    };
+  }
+
+  /**
+   * Extract coin name from full type path (legacy, for SDK calls)
    */
   private extractCoinName(coinTypeFull: string): string {
-    const parts = coinTypeFull.split('::');
-    if (parts.length >= 2) {
-      return parts[1]; // Return module name (e.g., "usdc")
-    }
-    return coinTypeFull;
+    return this.extractCoinInfo(coinTypeFull).sdkName;
   }
 
   /**

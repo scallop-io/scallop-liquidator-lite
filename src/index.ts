@@ -62,7 +62,11 @@ async function main() {
       console.log('   (none)');
     } else {
       for (const collateral of obligationInfo.collaterals) {
-        console.log(`   • ${collateral.coinName}: ${collateral.amountCoin.toFixed(4)} (~$${collateral.valueUsd.toFixed(2)})`);
+        const displayName = collateral.coinSymbol || collateral.coinName;
+        console.log(`   • ${displayName}: ${collateral.amountCoin.toFixed(4)} (~$${collateral.valueUsd.toFixed(2)})`);
+        if (collateral.coinDisplayName && collateral.coinDisplayName !== displayName) {
+          console.log(`     └─ ${collateral.coinDisplayName}`);
+        }
       }
     }
 
@@ -72,7 +76,13 @@ async function main() {
       console.log('   (none)');
     } else {
       for (const debt of obligationInfo.debts) {
-        console.log(`   • ${debt.coinName}: ${debt.amountCoin.toFixed(4)} (~$${debt.valueUsd.toFixed(2)})`);
+        const displayName = debt.coinSymbol || debt.coinName;
+        console.log(`   • ${displayName}: ${debt.amountCoin.toFixed(4)} (~$${debt.valueUsd.toFixed(2)})`);
+        if (debt.coinDisplayName && debt.coinDisplayName !== displayName) {
+          console.log(`     └─ ${debt.coinDisplayName}`);
+        }
+        // Show coin type for clarity (especially for bad debt)
+        console.log(`     └─ Type: ${debt.coinType}`);
       }
     }
 
@@ -106,6 +116,7 @@ async function main() {
     // Handle bad debt case (force repayment without collateral)
     if (isBadDebt && mode === 'force') {
       const primaryDebt = obligationInfo.debts[0];
+      const coinDisplay = primaryDebt.coinSymbol || primaryDebt.coinName.toUpperCase();
 
       // For bad debt, try to repay a small amount to test (10%)
       const repayPercentage = 0.1;
@@ -113,11 +124,14 @@ async function main() {
       const repayAmountHuman = primaryDebt.amountCoin * repayPercentage;
 
       console.log('\n📈 Bad Debt Repayment:');
-      console.log(`   Total debt: ${primaryDebt.amountCoin.toFixed(6)} ${primaryDebt.coinName.toUpperCase()}`);
-      console.log(`   Repay amount (10%): ${repayAmountHuman.toFixed(6)} ${primaryDebt.coinName.toUpperCase()}`);
+      console.log(`   Coin: ${coinDisplay} (${primaryDebt.coinDisplayName || coinDisplay})`);
+      console.log(`   Coin Type: ${primaryDebt.coinType}`);
+      console.log(`   Total debt: ${primaryDebt.amountCoin.toFixed(6)} ${coinDisplay}`);
+      console.log(`   Repay amount (10%): ${repayAmountHuman.toFixed(6)} ${coinDisplay}`);
       console.log(`   Raw amount: ${repayAmountRaw.toString()}`);
       console.log(`   ⚠️  WARNING: You will NOT receive any collateral in return!`);
-      console.log(`\n💰 Required: ${repayAmountHuman.toFixed(6)} ${primaryDebt.coinName.toUpperCase()} in your wallet`);
+      console.log(`\n💰 Required: ${repayAmountHuman.toFixed(6)} ${coinDisplay} in your wallet`);
+      console.log(`   Coin type needed: ${primaryDebt.coinType}`);
 
       console.log('\n🚀 Executing bad debt repayment...');
 
