@@ -78,8 +78,23 @@ async function main() {
 
     console.log('\n' + '─'.repeat(70));
 
+    // Check for bad debt (debt but no collateral)
+    const isBadDebt = obligationInfo.debts.length > 0 && obligationInfo.collaterals.length === 0;
+
+    if (isBadDebt) {
+      console.log('\n🚨 BAD DEBT DETECTED!');
+      console.log('   This obligation has debt but NO collateral.');
+      console.log('   Standard liquidation is not possible.');
+
+      if (mode !== 'force') {
+        console.log('\n💡 Use --force to attempt a direct repayment (experimental)');
+        process.exit(0);
+      }
+      console.log('\n⚠️  Force mode: attempting direct repayment...');
+    }
+
     // If not liquidatable, exit (unless force mode)
-    if (!obligationInfo.isLiquidatable) {
+    if (!obligationInfo.isLiquidatable && !isBadDebt) {
       console.log('\n⚠️  This obligation is not liquidatable (Risk Level < 100%)');
       if (mode !== 'force') {
         console.log('✓  Check complete - no action needed');
@@ -88,8 +103,42 @@ async function main() {
       console.log('⚠️  Force mode: attempting liquidation anyway...');
     }
 
+    // Handle bad debt case (force repayment without collateral)
+    if (isBadDebt && mode === 'force') {
+      const primaryDebt = obligationInfo.debts[0];
+
+      // For bad debt, try to repay a small amount to test (10%)
+      const repayPercentage = 0.1;
+      const repayAmountRaw = BigInt(Math.floor(primaryDebt.amount * repayPercentage));
+      const repayAmountHuman = primaryDebt.amountCoin * repayPercentage;
+
+      console.log('\n📈 Bad Debt Repayment:');
+      console.log(`   Total debt: ${primaryDebt.amountCoin.toFixed(6)} ${primaryDebt.coinName.toUpperCase()}`);
+      console.log(`   Repay amount (10%): ${repayAmountHuman.toFixed(6)} ${primaryDebt.coinName.toUpperCase()}`);
+      console.log(`   Raw amount: ${repayAmountRaw.toString()}`);
+      console.log(`   ⚠️  WARNING: You will NOT receive any collateral in return!`);
+      console.log(`\n💰 Required: ${repayAmountHuman.toFixed(6)} ${primaryDebt.coinName.toUpperCase()} in your wallet`);
+
+      console.log('\n🚀 Executing bad debt repayment...');
+
+      const result = await liquidator.repayBadDebt(
+        obligationId,
+        primaryDebt.coinName,
+        repayAmountRaw
+      );
+
+      if (result.success) {
+        console.log('\n✅ Bad debt repayment successful!');
+        console.log(`   Transaction: https://suiscan.xyz/mainnet/tx/${result.txDigest}`);
+        console.log(`   Repaid: ${result.repaidAmount}`);
+      } else {
+        console.log('\n❌ Bad debt repayment failed:');
+        console.log(`   Error: ${result.error}`);
+        process.exit(1);
+      }
+    }
     // If liquidatable (or force mode), show profit estimation
-    if (obligationInfo.debts.length > 0 && obligationInfo.collaterals.length > 0) {
+    else if (obligationInfo.debts.length > 0 && obligationInfo.collaterals.length > 0) {
       const primaryDebt = obligationInfo.debts[0];
       const primaryCollateral = obligationInfo.collaterals[0];
 

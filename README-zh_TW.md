@@ -9,6 +9,9 @@ Scallop Sui 借貸協議的輕量版清算機器人。
 - 估算清算利潤
 - 執行清算交易
 - 強制模式：繞過利潤檢查
+- **壞帳偵測** - 識別有債務但無抵押品的倉位
+- **鏈上直接查詢** - 當 SDK 回傳 null 時，直接從區塊鏈查詢
+- **壞帳償還** - 實驗性支援償還壞帳（強制模式）
 
 ## 前置需求
 
@@ -73,6 +76,8 @@ pnpm sliq <obligation_id> --force
 
 ## 輸出範例
 
+### 一般可清算倉位
+
 ```
 [CHECK MODE] Querying obligation: 0x1234...abcd
 ──────────────────────────────────────────────────────────────────────
@@ -103,12 +108,70 @@ pnpm sliq <obligation_id> --force
    pnpm sliq 0x1234...abcd --force      # Bypass profit check
 ```
 
+### 壞帳偵測
+
+當一個倉位有債務但沒有抵押品（壞帳）時，工具會偵測到：
+
+```
+[CHECK MODE] Querying obligation: 0xb227...7481
+──────────────────────────────────────────────────────────────────────
+⚠️  SDK returned null, querying chain directly...
+
+📊 Obligation Status:
+   ID: 0xb227...7481
+   Risk Level: 99900.00%
+   Liquidatable: ❌ NO
+
+💰 Collaterals:
+   (none)
+
+💳 Debts:
+   • usdc: 10.5911 (~$0.00)
+
+──────────────────────────────────────────────────────────────────────
+
+🚨 BAD DEBT DETECTED!
+   This obligation has debt but NO collateral.
+   Standard liquidation is not possible.
+
+💡 Use --force to attempt a direct repayment (experimental)
+```
+
+### 壞帳償還（強制模式）
+
+```
+[FORCE MODE] Querying obligation: 0xb227...7481
+──────────────────────────────────────────────────────────────────────
+
+🚨 BAD DEBT DETECTED!
+   This obligation has debt but NO collateral.
+   Standard liquidation is not possible.
+
+⚠️  Force mode: attempting direct repayment...
+
+📈 Bad Debt Repayment:
+   Total debt: 10.591093 USDC
+   Repay amount (10%): 1.059109 USDC
+   Raw amount: 1059109
+   ⚠️  WARNING: You will NOT receive any collateral in return!
+
+💰 Required: 1.059109 USDC in your wallet
+
+🚀 Executing bad debt repayment...
+
+✅ Bad debt repayment successful!
+   Transaction: https://suiscan.xyz/mainnet/tx/DTSHrvJf8KriNU6r1NNGFAr43RAnDtyZvjqg3bDqXaD2
+   Repaid: 1059109
+```
+
 ## 重要說明
 
 1. **僅限主網**：Scallop SDK 目前只支援主網
 2. **預言機更新**：清算前會自動更新價格
-3. **部分清算**：為安全起見，只償還 50% 的債務
+3. **部分清算**：為安全起見，一般清算只償還 50% 的債務（壞帳償還 10%）
 4. **Gas 費用**：請確保有足夠的 SUI 支付交易費
+5. **壞帳處理**：有債務但無抵押品的倉位無法正常清算。使用 `--force` 嘗試直接償還（你將**不會**收到任何抵押品作為回報）
+6. **SDK 備援**：當 SDK 回傳 null（例如壞帳情況）時，工具會直接查詢區塊鏈
 
 ## 錯誤代碼
 
@@ -123,6 +186,24 @@ pnpm sliq <obligation_id> --force
 
 1. 代為償還部分債務
 2. 獲得等值抵押品 + 清算獎勵（通常 5-10%）
+
+### 什麼是壞帳（Bad Debt）？
+
+壞帳是指一個倉位有債務但完全沒有抵押品的情況。這通常發生在：
+
+1. 抵押品價格急劇下跌，清算不及時
+2. 之前的清算已經把所有抵押品都拿走了
+
+**壞帳特點：**
+- 無法進行標準清算（沒有抵押品可以獲得）
+- SDK 的 `getObligationAccount` 會回傳 null
+- 本工具會自動從鏈上直接查詢這類倉位
+- 使用 `--force` 可以嘗試直接償還債務（但不會獲得任何回報）
+
+**為什麼要償還壞帳？**
+- 通常這是協議或保險基金的責任
+- 個人用戶一般不需要償還壞帳
+- 此功能主要用於測試和教育目的
 
 ### 風險等級計算
 
