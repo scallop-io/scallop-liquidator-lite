@@ -66,6 +66,12 @@ const KNOWN_COIN_TYPES: Record<string, { name: string; symbol: string; sdkName: 
     symbol: 'SCA',
     sdkName: 'sca',
   },
+  // Native USDT (may not be supported by Scallop)
+  '375f70cf2ae4c00bf37117d0c85a2c71545e6ee05c4a5c7d282cd66a4504b068::usdt::USDT': {
+    name: 'Native USDT',
+    symbol: 'USDT',
+    sdkName: 'usdt', // Note: Scallop may only support wusdt (Wormhole USDT)
+  },
 };
 
 export class ScallopLiquidator {
@@ -463,6 +469,14 @@ export class ScallopLiquidator {
         return {
           success: false,
           error: `Insufficient ${debtCoinName.toUpperCase()} balance. Required: ${humanAmount.toFixed(6)} ${debtCoinName.toUpperCase()}. Please ensure you have enough ${debtCoinName.toUpperCase()} in your wallet.`,
+        };
+      }
+
+      // Check for unsupported coin pool
+      if (errorMsg.includes('Cannot convert undefined') || errorMsg.includes('Cannot convert null')) {
+        return {
+          success: false,
+          error: `Coin "${debtCoinName}" is not supported by Scallop SDK. This debt may be in a coin that Scallop no longer supports or was never a valid lending pool. Common supported coins: usdc, wusdc, wusdt, sui, weth, cetus, sca.`,
         };
       }
 
