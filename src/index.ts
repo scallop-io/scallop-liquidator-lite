@@ -143,7 +143,7 @@ async function main() {
 
       if (result.success) {
         console.log('\n✅ Bad debt repayment successful!');
-        console.log(`   Transaction: https://suiscan.xyz/mainnet/tx/${result.txDigest}`);
+        console.log(`   Transaction: https://suivision.xyz/txblock/${result.txDigest}`);
         console.log(`   Repaid: ${result.repaidAmount}`);
       } else {
         console.log('\n❌ Bad debt repayment failed:');
@@ -198,7 +198,7 @@ async function main() {
 
         if (result.success) {
           console.log('\n✅ Liquidation successful!');
-          console.log(`   Transaction: https://suiscan.xyz/mainnet/tx/${result.txDigest}`);
+          console.log(`   Transaction: https://suivision.xyz/txblock/${result.txDigest}`);
           console.log(`   Repaid: ${result.repaidAmount}`);
         } else {
           console.log('\n❌ Liquidation failed:');

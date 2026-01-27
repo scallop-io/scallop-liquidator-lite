@@ -22,42 +22,49 @@ const COIN_DECIMALS: Record<string, number> = {
   'sca': 9,
 };
 
-// Known coin type addresses to human-readable names
-const KNOWN_COIN_TYPES: Record<string, { name: string; symbol: string }> = {
+// Known coin type addresses to human-readable names and SDK names
+const KNOWN_COIN_TYPES: Record<string, { name: string; symbol: string; sdkName: string }> = {
   // Native USDC
   'dba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC': {
     name: 'USD Coin',
     symbol: 'USDC',
+    sdkName: 'usdc',
   },
   // Wormhole USDC
   '5d4b302506645c37ff133b98c4b50a5ae14841659738d6d733d59d0d217a93bf::coin::COIN': {
     name: 'Wormhole USDC',
     symbol: 'wUSDC',
+    sdkName: 'wusdc',
   },
   // Wormhole USDT
   'c060006111016b8a020ad5b33834984a437aaa7d3c74c18e09a95d48aceab08c::coin::COIN': {
     name: 'Wormhole USDT',
     symbol: 'wUSDT',
+    sdkName: 'wusdt',
   },
   // Wormhole ETH
   'af8cd5edc19c4512f4259f0bee101a40d41ebed738ade5874359610ef8eeced5::coin::COIN': {
     name: 'Wormhole ETH',
     symbol: 'wETH',
+    sdkName: 'weth',
   },
   // Native SUI
   '0000000000000000000000000000000000000000000000000000000000000002::sui::SUI': {
     name: 'Sui',
     symbol: 'SUI',
+    sdkName: 'sui',
   },
   // CETUS
   '06864a6f921804860930db6ddbe2e16acdf8504495ea7481637a1c8b9a8fe54b::cetus::CETUS': {
     name: 'Cetus',
     symbol: 'CETUS',
+    sdkName: 'cetus',
   },
   // SCA
   '7016aae72cfc67f2fadf55769c0a7dd54291a583b63051a5ed71081cce836ac6::sca::SCA': {
     name: 'Scallop',
     symbol: 'SCA',
+    sdkName: 'sca',
   },
 };
 
@@ -304,7 +311,7 @@ export class ScallopLiquidator {
       return {
         name: known.name,
         symbol: known.symbol,
-        sdkName: known.symbol.toLowerCase().replace('w', ''), // wUSDC -> usdc for SDK
+        sdkName: known.sdkName,
       };
     }
 

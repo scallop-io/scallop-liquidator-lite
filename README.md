@@ -160,7 +160,7 @@ When an obligation has debt but no collateral (bad debt), the tool will detect i
 🚀 Executing bad debt repayment...
 
 ✅ Bad debt repayment successful!
-   Transaction: https://suiscan.xyz/mainnet/tx/DTSHrvJf8KriNU6r1NNGFAr43RAnDtyZvjqg3bDqXaD2
+   Transaction: https://suivision.xyz/txblock/DTSHrvJf8KriNU6r1NNGFAr43RAnDtyZvjqg3bDqXaD2
    Repaid: 1059109
 ```
 
