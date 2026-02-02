@@ -126,7 +126,9 @@ When an obligation has debt but no collateral (bad debt), the tool will detect i
    (none)
 
 💳 Debts:
-   • usdc: 10.5911 (~$0.00)
+   • wUSDC: 10.5911 (~$0.00)
+     └─ Wormhole USDC
+     └─ Type: 0x5d4b302506645c37ff133b98c4b50a5ae14841659738d6d733d59d0d217a93bf::coin::COIN
 
 ──────────────────────────────────────────────────────────────────────
 
@@ -150,33 +152,41 @@ When an obligation has debt but no collateral (bad debt), the tool will detect i
 ⚠️  Force mode: attempting direct repayment...
 
 📈 Bad Debt Repayment:
-   Total debt: 10.591093 USDC
-   Repay amount (10%): 1.059109 USDC
-   Raw amount: 1059109
+   Coin: wUSDC (Wormhole USDC)
+   Coin Type: 0x5d4b...::coin::COIN
+   Total debt: 10.591093 wUSDC
+   Repay amount (100%): 10.591093 wUSDC
+   Raw amount: 10591093
    ⚠️  WARNING: You will NOT receive any collateral in return!
 
-💰 Required: 1.059109 USDC in your wallet
+💰 Required: 10.591093 wUSDC in your wallet
+   Coin type needed: 0x5d4b...::coin::COIN
 
 🚀 Executing bad debt repayment...
 
 ✅ Bad debt repayment successful!
-   Transaction: https://suivision.xyz/txblock/DTSHrvJf8KriNU6r1NNGFAr43RAnDtyZvjqg3bDqXaD2
-   Repaid: 1059109
+   Transaction: https://suivision.xyz/txblock/...
+   Repaid: 10591093
 ```
 
 ## Important Notes
 
 1. **Mainnet Only**: The Scallop SDK only supports mainnet
 2. **Oracle Update**: Prices are automatically updated before liquidation
-3. **Partial Liquidation**: Only 50% of debt is repaid for safety (10% for bad debt)
+3. **Partial Liquidation**: Only 50% of debt is repaid for normal liquidation, 100% for bad debt repayment
 4. **Gas Costs**: Ensure sufficient SUI for transaction fees
 5. **Bad Debt**: Obligations with debt but no collateral cannot be liquidated normally. Use `--force` to attempt direct repayment (you will NOT receive any collateral in return)
 6. **SDK Fallback**: If the SDK returns null (e.g., for bad debt), the tool queries the blockchain directly
+7. **Unsupported Coins**: Some coins (e.g., native USDT) may not be supported by Scallop SDK. Common supported coins: usdc, wusdc, wusdt, sui, weth, cetus, sca
 
 ## Error Codes
 
-- **770**: Obligation is locked (unstake from borrow incentive first)
-- **1537**: Liquidation amount must be greater than zero
+| Code | Description | Solution |
+|------|-------------|----------|
+| **770** | Obligation is locked in borrow incentive | Only the owner can unstake it first |
+| **1537** | Liquidation amount must be > 0 | Debt may be too small to liquidate |
+| **Insufficient balance** | Not enough coins in wallet | Ensure you have the required coin type |
+| **Unsupported coin** | SDK doesn't recognize the coin | Check if the coin pool exists in Scallop |
 
 ## Bad Debt
 

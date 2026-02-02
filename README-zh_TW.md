@@ -126,7 +126,9 @@ pnpm sliq <obligation_id> --force
    (none)
 
 💳 Debts:
-   • usdc: 10.5911 (~$0.00)
+   • wUSDC: 10.5911 (~$0.00)
+     └─ Wormhole USDC
+     └─ Type: 0x5d4b302506645c37ff133b98c4b50a5ae14841659738d6d733d59d0d217a93bf::coin::COIN
 
 ──────────────────────────────────────────────────────────────────────
 
@@ -150,33 +152,41 @@ pnpm sliq <obligation_id> --force
 ⚠️  Force mode: attempting direct repayment...
 
 📈 Bad Debt Repayment:
-   Total debt: 10.591093 USDC
-   Repay amount (10%): 1.059109 USDC
-   Raw amount: 1059109
+   Coin: wUSDC (Wormhole USDC)
+   Coin Type: 0x5d4b...::coin::COIN
+   Total debt: 10.591093 wUSDC
+   Repay amount (100%): 10.591093 wUSDC
+   Raw amount: 10591093
    ⚠️  WARNING: You will NOT receive any collateral in return!
 
-💰 Required: 1.059109 USDC in your wallet
+💰 Required: 10.591093 wUSDC in your wallet
+   Coin type needed: 0x5d4b...::coin::COIN
 
 🚀 Executing bad debt repayment...
 
 ✅ Bad debt repayment successful!
-   Transaction: https://suivision.xyz/txblock/DTSHrvJf8KriNU6r1NNGFAr43RAnDtyZvjqg3bDqXaD2
-   Repaid: 1059109
+   Transaction: https://suivision.xyz/txblock/...
+   Repaid: 10591093
 ```
 
 ## 重要說明
 
 1. **僅限主網**：Scallop SDK 目前只支援主網
 2. **預言機更新**：清算前會自動更新價格
-3. **部分清算**：為安全起見，一般清算只償還 50% 的債務（壞帳償還 10%）
+3. **部分清算**：一般清算只償還 50% 的債務，壞帳償還 100%
 4. **Gas 費用**：請確保有足夠的 SUI 支付交易費
 5. **壞帳處理**：有債務但無抵押品的倉位無法正常清算。使用 `--force` 嘗試直接償還（你將**不會**收到任何抵押品作為回報）
 6. **SDK 備援**：當 SDK 回傳 null（例如壞帳情況）時，工具會直接查詢區塊鏈
+7. **不支援的幣種**：某些幣種（如原生 USDT）可能不被 Scallop SDK 支援。常見支援幣種：usdc, wusdc, wusdt, sui, weth, cetus, sca
 
 ## 錯誤代碼
 
-- **770**：倉位已鎖定（需先從借款激勵中解除質押）
-- **1537**：清算金額必須大於零
+| 代碼 | 說明 | 解決方案 |
+|------|------|----------|
+| **770** | 倉位已鎖定在借款激勵中 | 只有擁有者可以先解除質押 |
+| **1537** | 清算金額必須大於零 | 債務金額可能太小無法清算 |
+| **餘額不足** | 錢包中沒有足夠的幣 | 確保你有所需的幣種 |
+| **不支援的幣種** | SDK 無法識別該幣種 | 檢查該幣池是否存在於 Scallop |
 
 ## 清算機制說明
 
