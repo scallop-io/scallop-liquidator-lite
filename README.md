@@ -238,6 +238,33 @@ Risk Level = $200 / $250 = 80% (Safe)
 - Risk Level < 100%: Safe
 - Risk Level >= 100%: Liquidatable
 
+## Project Structure
+
+```
+scallop-liquidator-lite/
+├── src/
+│   ├── index.ts          # CLI entry point
+│   ├── config.ts         # Configuration and SDK initialization
+│   ├── liquidator.ts     # Core liquidation logic
+│   └── types.ts          # Type definitions
+├── .env.example          # Environment variables template
+├── .gitignore
+├── package.json
+├── tsconfig.json
+└── README.md
+```
+
+## Future Improvements
+
+To develop this into a full-featured liquidation bot, consider:
+
+1. **Build an Indexer** - Monitor health status of all obligations
+2. **Profit Calculation Optimization** - Account for gas costs and slippage
+3. **Batch Liquidation** - Liquidate multiple positions for efficiency
+4. **Flash Loan Integration** - Liquidate without requiring own capital
+5. **MEV Protection** - Prevent front-running attacks
+6. **Alert System** - Notifications when liquidation opportunities arise
+
 ## Resources
 
 - [Scallop Documentation](https://docs.scallop.io/)
